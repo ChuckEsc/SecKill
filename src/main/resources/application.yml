@@ -1,0 +1,15 @@
+server:
+  port: 9000
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      url: jdbc:mysql://localhost:3306/index?serverTimezone=UTC
+    driver-class-name: com.mysql.jdbc.Driver
+    username: root
+    password: 123456
+
+logging:
+  level:
+    root: info
+
