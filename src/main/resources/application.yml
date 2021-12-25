@@ -12,4 +12,13 @@ spring:
 logging:
   level:
     root: info
+    com:
+      sec:
+        kill:
+          repo: debug
 
+mybatis:
+  mapper-locations: classpath:mapper/**.xml
+  type-aliases-package: com.sec.kill.model
+  configuration:
+    map-underscore-to-camel-case: true
