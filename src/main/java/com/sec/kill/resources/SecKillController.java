@@ -123,4 +123,44 @@ public class SecKillController {
         }
     }
 
+
+    /**
+     * 乐观锁防超卖 + 令牌桶限流 + md5签名（隐藏 getMd5 接口！） + 单用户访问频率限制
+     */
+    @GetMapping("/kill/tms")
+    public String killByMd5AndTimes(Integer id, Long uid, String md5) {
+
+        // 这里主要为了测试<限制访问频率>的功能，不考虑超时抢购，需要考虑md5
+        //if (!stringRedisTemplate.hasKey("REDIS_PREFIX_KEY" + id)) { // 规定缓存中超时记录的键为 <REDIS_PREFIX_KEY + 商品id>
+        //    //throw new RuntimeException("抢购已结束~~~");
+        //    LOGGER.info("抢购已结束!!~");
+        //    return "over";
+        //}
+
+        try {
+            stockService.allowVisit(id, uid, md5);//需要验证值md5且不超时，检查访问频率
+        } catch (Exception e) {
+            //e.printStackTrace();
+            LOGGER.info(e.getMessage());
+            return e.getMessage();
+        }
+
+        if (!rateLimiter.tryAcquire(2, TimeUnit.SECONDS)) { // 调用服务层业务之前进行限流
+            LOGGER.info("抢购过于火爆，请重试~~~");
+            //throw new RuntimeException("抢购过于火爆，请重试~~~");
+            return "为了控制台更好的显示，这里不抛异常，不打印堆栈";
+        }
+
+        try {
+            int orderId = stockService.killByMd5(id, uid, md5); //  已经检验过md5
+            LOGGER.info("秒杀成功！，订单编号 " + orderId);
+            return "秒杀成功！，订单编号 " + orderId;
+        } catch (Exception e) {
+            //e.printStackTrace();
+            LOGGER.info(e.getMessage());
+            return e.getMessage();
+        }
+
+    }
+
 }
