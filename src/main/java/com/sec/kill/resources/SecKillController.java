@@ -64,7 +64,7 @@ public class SecKillController {
     // 令牌桶实例
     private RateLimiter rateLimiter = RateLimiter.create(10);
 
-    @GetMapping("/kill/rate/limit")
+    @GetMapping("/rate/limit")
     public String limit(@RequestParam(required = true) Integer id) {
         // 没有获取到令牌会阻塞等待直到获取
 //        LOGGER.info("等待的时间： " + rateLimiter.acquire());
@@ -74,5 +74,28 @@ public class SecKillController {
         }
         System.out.println("处理业务....");
         return "测试令牌桶";
+    }
+
+    /**
+     * 乐观锁防止超卖 + 令牌桶算法限流
+     *
+     * @param id 商品编号
+     * @return string
+     */
+    @GetMapping("/kill/rate/limit")
+    public String rateLimit(@RequestParam(required = true) Integer id) {
+        if (!rateLimiter.tryAcquire(2, TimeUnit.SECONDS)) {
+            System.out.println("======抛弃请求======");
+            return "当前抢购过于火爆，请稍后再试～";
+        }
+        try {
+            synchronized (this) {   // 控制层的调用处加锁
+                int orderId = stockService.kill(id);
+                return "秒杀成功！，订单编号 " + orderId;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return e.getMessage();
+        }
     }
 }
