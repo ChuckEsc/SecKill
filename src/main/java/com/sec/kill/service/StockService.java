@@ -30,6 +30,7 @@ public class StockService {
         this.orderService = orderService;
         this.redisTemplate = redisTemplate;
     }
+
     // 悲观锁
     public synchronized int kill(Integer id) throws Exception {
         // 检验redis中秒杀商品是否在有效期内， 例如商品时限设置 一个小时
@@ -51,7 +52,7 @@ public class StockService {
     }
 
     // 乐观锁
-    public int killOptimistic(Integer id) throws Exception{
+    public int killOptimistic(Integer id) throws Exception {
         Stock stock = stockDao.findStockById(id);
         if (stock.getTotal().equals(stock.getSale())) {
             throw new Exception("商品已售空！！");
@@ -69,11 +70,29 @@ public class StockService {
         }
     }
 
-    public int killSec(Integer id){
+    public int killSec(Integer id) {
         // 校验超时
         // 校验库存
         // 更新库存
         // 创建订单
         return 0;
+    }
+
+
+    /**
+     * 用户通过验证值md5秒杀
+     */
+    public int killByMd5(Integer id, Long uid, String md5) throws Exception {
+
+        if (id == null || uid == null || md5 == null)
+            throw new RuntimeException("参数不合法，请重试~~~");
+
+        String key = "MS_KEY_" + id + "_" + uid;
+        String value = redisTemplate.opsForValue().get(key);
+        log.info("验证用户：key={}, value={}", key, value);
+        if (value == null || !value.equals(md5))
+            throw new RuntimeException("请求数据不合法，请重试~~");
+
+        return kill(id);
     }
 }

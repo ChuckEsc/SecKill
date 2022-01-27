@@ -1,6 +1,7 @@
 package com.sec.kill.resources;
 
 import com.google.common.util.concurrent.RateLimiter;
+import com.sec.kill.service.CustomerService;
 import com.sec.kill.service.StockService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,11 +19,14 @@ public class SecKillController {
 
     StockService stockService;
 
+    CustomerService customerService;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(SecKillController.class);
 
     @Autowired
-    public SecKillController(StockService stockService) {
+    public SecKillController(StockService stockService, CustomerService customerService) {
         this.stockService = stockService;
+        this.customerService = customerService;
     }
 
     /**
@@ -89,13 +93,34 @@ public class SecKillController {
             return "当前抢购过于火爆，请稍后再试～";
         }
         try {
-            synchronized (this) {   // 控制层的调用处加锁
-                int orderId = stockService.kill(id);
-                return "秒杀成功！，订单编号 " + orderId;
-            }
+            int orderId = stockService.kill(id);
+            return "秒杀成功！，订单编号 " + orderId;
         } catch (Exception e) {
             e.printStackTrace();
             return e.getMessage();
         }
     }
+
+
+    /**
+     * 乐观锁防止超卖 + 令牌桶算法限流 + md5签名&接口隐藏
+     *
+     * @param id 商品编号
+     * @return string
+     */
+    @GetMapping("/kill/rate/")
+    public String killWithMd5(@RequestParam(required = true) Integer id, Long uid, String md5) {
+        if (!rateLimiter.tryAcquire(2, TimeUnit.SECONDS)) {
+            System.out.println("======抛弃请求======");
+            return "当前抢购过于火爆，请稍后再试～";
+        }
+        try {
+            int orderId = stockService.killByMd5(id, uid, md5);
+            return "秒杀成功！，订单编号 " + orderId;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return e.getMessage();
+        }
+    }
+
 }
